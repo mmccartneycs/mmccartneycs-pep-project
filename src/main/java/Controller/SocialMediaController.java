@@ -1,16 +1,18 @@
 package Controller;
 
+import java.sql.SQLException;
+import java.util.List;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import Model.Account;
+import Model.*;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
-/**
- * TODO: You will need to write your own endpoints and handlers for your controller. The endpoints you will need can be
- * found in readme.md as well as the test cases. You should
- * refer to prior mini-project labs and lecture materials for guidance on how a controller may be built.
- */
+import Service.*;
+
+
 public class SocialMediaController {
     AccountService accountService;
     MessageService messageService;
@@ -28,8 +30,14 @@ public class SocialMediaController {
      */
     public Javalin startAPI() {
         Javalin app = Javalin.create();
-        //app.get("example-endpoint", this::exampleHandler);
-        app.post("/accounts", this::postAccountHandler);
+        app.post("/register", this::postAccountHandler);
+        app.post("/login", this::postAccountLogin);
+        app.post("/messages", this::postNewMessage);
+        app.get("/messages", this::getAllMessages);
+        app.get("/messages/{message_id}", this::getMessageByID);
+        app.delete("/messages/{message_id}", this::deleteMessage);
+        app.patch("/messages/{message_id}", this::updateMessage);
+        app.get("/accounts/{account_id}/messages", this::getByUser);
         return app;
     }
 
@@ -43,14 +51,71 @@ public class SocialMediaController {
         else context.status(400);
     }
 
+    private void postAccountLogin(Context context) throws JsonProcessingException, SQLException{
+        ObjectMapper mapper = new ObjectMapper();
+        Account account = mapper.readValue(context.body(), Account.class);
+        Account validAccount = accountService.validateAccount(account);
 
-    /**
-     * This is an example handler for an example endpoint.
-     * @param context The Javalin Context object manages information about both the HTTP request and response.
-     */
-    private void exampleHandler(Context context) {
-        context.json("sample text");
+        if(validAccount != null){
+            context.json(mapper.writeValueAsString(validAccount));
+        }
+        else context.status(401);
     }
 
+    private void postNewMessage(Context context) throws JsonProcessingException{
+        ObjectMapper mapper = new ObjectMapper();
+        Message message = mapper.readValue(context.body(), Message.class);
+        Message newMessage = messageService.addMessage(message);
+
+        if(newMessage != null){
+            context.json(mapper.writeValueAsString(newMessage));
+        }
+        else context.status(400);
+    }
+
+    private void getAllMessages(Context context) {
+        List<Message> messages = messageService.getAllMessages();
+        context.json(messages);
+    }
+
+    private void getMessageByID(Context context) throws SQLException {
+        int id = Integer.parseInt(context.pathParam("message_id"));
+        Message message = messageService.getMessageByID(id);
+        if (message != null) {
+            context.json(message);
+        } else {
+            context.status(200);
+        }
+    }
+    private void deleteMessage(Context context) throws SQLException {
+        int messageId = Integer.parseInt(context.pathParam("message_id"));
+        Message deletedMessage = messageService.deleteMessage(messageId);
+        if (deletedMessage.getMessage_id() > 0){
+            context.status(200).json(deletedMessage);
+        }
+        else context.status(200);
+        
+    }
+
+    private void updateMessage(Context context) throws SQLException, JsonMappingException, JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        Message message = mapper.readValue(context.body(), Message.class);
+        int id = Integer.parseInt(context.pathParam("message_id"));
+        String text = message.getMessage_text();
+        Message update = messageService.updateMessage(id, text);
+        if(update != null){
+            context.status(200).json(update);
+        }
+        else
+            context.status(400);
+    }
+
+
+    private void getByUser(Context context) throws SQLException, JsonMappingException, JsonProcessingException {
+        int id = Integer.parseInt(context.pathParam("account_id"));
+        List<Message> messages = messageService.getByUser(id);
+        context.json(messages);
+
+    }
 
 }

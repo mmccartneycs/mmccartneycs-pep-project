@@ -1,0 +1,7 @@
+commit 9c0a6f8614788bc89b04af10e8a70f5d7098d1f9
+Author: mmccartneycs <mike_mccartney@msn.com>
+Date:   Mon Feb 13 11:40:43 2023 +0000
+
+    Ver 1. created files/structure
+
+ 5 files changed, 68 insertions(+), 3 deletions(-)
